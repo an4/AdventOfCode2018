@@ -149,7 +149,7 @@ public class Day02 {
         } catch (IOException e) {
             System.out.println("File I/O error!");
         }
-        return null;
+        return "";
     }
 
     private static HashSet<String> getSubstringsFromWord(String word) {

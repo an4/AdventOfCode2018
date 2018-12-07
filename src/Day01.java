@@ -4,9 +4,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Scanner;
 
-/** Advent of Code Day 1 .*/
+/** Advent of Code Day 1 . */
 public class Day01 {
-    private static final String INPUT_FILE_PATH = "C:\\Users\\dev\\IdeaProjects\\AdventOfCode\\input\\day1.txt";
+    private static final String INPUT_FILE_PATH =
+            "C:\\Users\\dev\\IdeaProjects\\AdventOfCode\\input\\day1.txt";
 
     public static void main(String[] args) {
         System.out.println(partOne());
