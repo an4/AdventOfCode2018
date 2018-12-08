@@ -221,11 +221,11 @@ public class Day04 {
         }
 
         int getMostSleptMinute() {
-            int maxOccurreces = -1;
+            int maxOccurrences = -1;
             int maxMinute = -1;
             for (int i=0; i<minutesArray.length; i++) {
-                if (maxOccurreces < minutesArray[i]) {
-                    maxOccurreces = minutesArray[i];
+                if (maxOccurrences < minutesArray[i]) {
+                    maxOccurrences = minutesArray[i];
                     maxMinute = i;
                 }
             }
