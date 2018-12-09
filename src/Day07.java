@@ -7,10 +7,11 @@ public class Day07 {
 
     private static final String INPUT_FILE_PATH =
             "C:\\Users\\dev\\IdeaProjects\\AdventOfCode\\input\\day7.txt";
+    private static final int NUM_WORKERS = 5;
 
     public static void main(String[] args) {
-        HashMap<String, Step> steps = getSteps();
-        System.out.println(partOne(steps));
+        System.out.println(partOne(getSteps()));
+        System.out.println(partTwo(getSteps()));
     }
 
     /**
@@ -78,7 +79,7 @@ public class Day07 {
             }
             if (((Step) entry.getValue()).next.isEmpty()) {
                 lastStep = (Step) entry.getValue();
-                lastStep.done = true;
+                lastStep.state = State.DONE;
             }
         }
         if (firstStep == null || lastStep == null) {
@@ -92,15 +93,15 @@ public class Day07 {
         Collections.sort(stack);
         while (!stack.isEmpty()) {
             Step currentStep = stack.pop();
-            if (!currentStep.done && allPreviousStepsCompleted(currentStep)) {
+            if (currentStep.state != State.DONE && allPreviousStepsCompleted(currentStep)) {
                 sequence += currentStep.id;
-                currentStep.done = true;
+                currentStep.state = State.DONE;
             } else {
 
             }
             for (int i = 0; i < currentStep.next.size(); i++) {
                 Step step = currentStep.next.get(i);
-                if (!step.done) {
+                if (step.state != State.DONE) {
                     stack.push(step);
                 }
             }
@@ -156,13 +157,113 @@ public class Day07 {
      * With 5 workers and the 60+ second step durations described above, how long will it take to
      * complete all of the steps?
      */
-    private static int partTwo() {
-        return 0;
+    private static int partTwo(HashMap<String, Step> map) {
+        int[] workersTime = new int[NUM_WORKERS];
+        ArrayList<Step> firstSteps = new ArrayList<>();
+        int currentTime = 0;
+        HashMap<Integer, ArrayList<Step>> doneMap = new HashMap<>();
+        int maxFutureTime = -1;
+
+        Step lastStep = null;
+        for (Map.Entry entry : map.entrySet()) {
+            if (((Step) entry.getValue()).previous.isEmpty()) {
+                firstSteps.add((Step) entry.getValue());
+            }
+            if (((Step) entry.getValue()).next.isEmpty()) {
+                lastStep = (Step) entry.getValue();
+            }
+        }
+        if (lastStep == null) {
+            return 0;
+        }
+
+        Stack<Step> stack = new Stack();
+        for (Step step : firstSteps) {
+            step.state = State.READY;
+            stack.push(step);
+        }
+        Collections.sort(stack);
+
+        Step currentStep;
+        while (!allPreviousStepsCompleted(lastStep)) {
+            while (stack.isEmpty() && currentTime <= maxFutureTime) {
+                currentTime++;
+                ArrayList<Step> completedSteps =
+                        doneMap.getOrDefault(currentTime, new ArrayList<>());
+                for (Step step : completedSteps) {
+                    step.state = State.DONE;
+                    for (Step next : step.next) {
+                        if (next.state == State.READY || next.state == State.WAITING_FOR_DEPS) {
+                            stack.push(next);
+                        }
+                    }
+                }
+                doneMap.remove(currentTime);
+            }
+            Collections.sort(stack);
+            if (stack.isEmpty()) {
+                break;
+            }
+
+            currentStep = stack.pop();
+            System.out.println("Current step " + currentStep.id);
+
+            ArrayList<Step> completedSteps = doneMap.getOrDefault(currentTime, new ArrayList<>());
+            for (Step step : completedSteps) {
+                step.state = State.DONE;
+                for (Step next : step.next) {
+                    stack.push(next);
+                }
+            }
+            Collections.sort(stack);
+
+            if (currentStep.state == State.WAITING_FOR_DEPS &&
+                    allPreviousStepsCompleted(currentStep)) {
+                currentStep.state = State.READY;
+            }
+
+            if (currentStep.state == State.READY) {
+                // Find free worker
+                int availableWorker = -1;
+                while (availableWorker == -1) {
+                    for (int i = 0; i < NUM_WORKERS; i++) {
+                        if (currentTime >= workersTime[i]) {
+                            availableWorker = i;
+                            break;
+                        }
+                    }
+                    if (availableWorker == -1) {
+                        currentTime++;
+                    }
+                }
+                System.out.println(
+                        "Task " + currentStep.id + " started by worker " + availableWorker +
+                                " lasting " + currentStep.duration + " at current time " +
+                                currentTime);
+                currentStep.state = State.IN_PROGRESS;
+                ArrayList<Step> stepsInProgress =
+                        doneMap.getOrDefault(currentTime + currentStep.duration, new ArrayList<>());
+                stepsInProgress.add(currentStep);
+                doneMap.put(currentTime + currentStep.duration, stepsInProgress);
+                if (maxFutureTime < currentTime + currentStep.duration) {
+                    maxFutureTime = currentTime + currentStep.duration;
+                }
+                workersTime[availableWorker] = currentTime + currentStep.duration;
+            }
+        }
+        // get max time;
+        int maxTime = 0;
+        for (int i = 0; i < NUM_WORKERS; i++) {
+            if (maxTime < workersTime[i]) {
+                maxTime = workersTime[i];
+            }
+        }
+        return maxTime;
     }
 
     private static boolean allPreviousStepsCompleted(Step step) {
         for (Step prev : step.previous) {
-            if (prev.done == false) {
+            if (prev.state != State.DONE) {
                 return false;
             }
         }
@@ -189,18 +290,23 @@ public class Day07 {
         } catch (IOException e) {
             System.out.println("File I/O error!");
         }
-        System.out.println(map.size());
         return map;
+    }
+
+    private enum State {
+        WAITING_FOR_DEPS, READY, IN_PROGRESS, DONE
     }
 
     private static class Step implements Comparable<Step> {
         String id;
         ArrayList<Step> previous = new ArrayList<>();
         ArrayList<Step> next = new ArrayList<>();
-        Boolean done = false;
+        State state = State.WAITING_FOR_DEPS;
+        int duration;
 
         Step(String id) {
             this.id = id;
+            this.duration = 60 + (id.charAt(0) - 'A' + 1);
         }
 
         @Override
